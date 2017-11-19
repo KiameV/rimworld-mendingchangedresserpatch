@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-    <name>Mending Change Dresser Patch - A17</name>
+    <name>Mending Change Dresser Patch - B18</name>
     <author>Kiame Vivacity</author>
-    <targetVersion>0.17.0</targetVersion>
+    <targetVersion>0.18.0</targetVersion>
 	<url></url>
     <description>A patch for Mending which allows pawns to remove apparel from Change Dressers.
 </description>
