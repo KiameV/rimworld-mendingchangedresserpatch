@@ -41,7 +41,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="ChangeDresser">
-      <HintPath>.\ChangeDresser.dll</HintPath>
+      <HintPath>D:\Steam\steamapps\common\RimWorld\Mods\ChangeDresser\Assemblies\ChangeDresser.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Mending">

@@ -1,6 +1,7 @@
 ﻿using ChangeDresser;
 using Harmony;
 using RimWorld;
+using System.Collections.Generic;
 using System.Reflection;
 using Verse;
 using Verse.AI;
@@ -15,18 +16,78 @@ namespace MendingChangeDresserPatch
             var harmony = HarmonyInstance.Create("com.mendingchangedresserpatch.rimworld.mod");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
 
-            Log.Message("MendingChangeDresserPatch: Adding Harmony Postfix to Mending.WorkGiver_DoBill.TryFindBestBillIngredients");
+            Log.Message("MendingChangeDresserPatch: Adding Harmony Postfix to WorkGiver_DoBill.TryFindBestBillIngredients");
+            Log.Message("MendingChangeDresserPatch: Adding Harmony Postfix to Game.Game_FinalizeInit");
+        }
+
+        private static LinkedList<Building_Dresser> changeDressers = null;
+        private static bool initialized = false;
+        public static IEnumerable<Building_Dresser> GetChangeDressers()
+        {
+            if (!initialized)
+            {
+                bool mendingFound = false;
+                foreach (ModContentPack pack in LoadedModManager.RunningMods)
+                {
+                    foreach (Assembly assembly in pack.assemblies.loadedAssemblies)
+                    {
+                        if (!mendingFound &&
+                            assembly.GetName().Name.Equals("Mending"))
+                        {
+                            mendingFound = true;
+                        }
+                        else if (
+                            changeDressers == null &&
+                            assembly.GetName().Name.Equals("ChangeDresser"))
+                        {
+                            System.Type type = assembly.GetType("ChangeDresser.WorldComp");
+                            PropertyInfo fi = type?.GetProperty("DressersToUse", BindingFlags.Public | BindingFlags.Static);
+                            changeDressers = (LinkedList<Building_Dresser>)fi?.GetValue(null, null);
+                        }
+                    }
+                    if (mendingFound && changeDressers != null)
+                    {
+                        break;
+                    }
+                }
+                if (!mendingFound)
+                {
+                    Log.Error("Failed to initialize MendingChangeDresserPatch, mending not found.");
+                }
+                else if (changeDressers == null)
+                {
+                    Log.Error("Failed to initialize MendingChangeDresserPatch, changeDressers could not be initialized.");
+                }
+                initialized = true;
+            }
+            return changeDressers;
+        }
+    }
+
+    [HarmonyPatch(typeof(Verse.Game), "FinalizeInit")]
+    static class Patch_Game_FinalizeInit
+    {
+        static void Postfix()
+        {
+            Main.GetChangeDressers();
         }
     }
 
     [HarmonyPatch(typeof(Mending.WorkGiver_DoBill), "TryFindBestBillIngredients")]
-    static class Pawn_GetGizmos
+    static class Patch_WorkGiver_DoBill_TryFindBestBillIngredients
     {
-        public static void Postfix(ref bool __result, Bill bill, Pawn pawn, Thing billGiver, bool ignoreHitPoints, ref Thing chosen)
+        static void Postfix(ref bool __result, Bill bill, Pawn pawn, Thing billGiver, bool ignoreHitPoints, ref Thing chosen)
         {
             if (__result == false)
             {
-                foreach (Building_Dresser dresser in WorldComp.DressersToUse)
+                IEnumerable<Building_Dresser> dressers = Main.GetChangeDressers();
+                if (dressers == null)
+                {
+                    Log.Warning("MendingChangeDresserPatch failed to retrieve ChangeDressers");
+                    return;
+                }
+
+                foreach (Building_Dresser dresser in dressers)
                 {
                     if (dresser.Spawned && dresser.Map == pawn.Map)
                     {
